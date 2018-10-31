@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -474,8 +475,10 @@ liftMask maskVariant k = do
         unmask (Return q) = Return q
         unmask (Effect m) = Effect $ do
             -- retrieve base's unmask and apply to merged action
-            Masked unmaskVariant <- liftIO $ readIORef ioref
-            unmaskVariant (m >>= chunk >>= return . unmask)
+            liftIO (readIORef ioref) >>= \case
+              Unmasked -> m
+              Masked unmaskVariant ->
+                unmaskVariant (m >>= chunk >>= return . unmask)
 
         -- merge adjacent actions in base monad
         chunk :: forall s. Stream (Of a) m s -> m (Stream (Of a) m s)
